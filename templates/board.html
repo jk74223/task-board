@@ -31,6 +31,7 @@ body{margin:0;background:#f4f5f7;font-family:-apple-system,BlinkMacSystemFont,"P
 .detail{margin-top:10px;padding-top:10px;border-top:1px dashed #e6e8eb;font-size:13.5px;line-height:1.65;color:#3f4652;white-space:pre-wrap;word-break:break-word}
 .kv{margin-top:8px;font-size:13px;line-height:1.6;background:#fafbfc;border-radius:8px;padding:9px 10px;white-space:pre-wrap;word-break:break-word}
 .kv b{color:#646a73;font-weight:500;display:block;font-size:12px;margin-bottom:3px}
+.kv .tgl{display:inline-block;margin-top:5px;color:#3370ff;font-size:12px;cursor:pointer}
 .ops{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap}
 .ops button{flex:1;min-width:88px;padding:9px 10px;border-radius:8px;border:1px solid #dbe0e6;background:#fff;font-size:14px;color:#3f4652}
 .ops .ok{border-color:#3370ff;background:#3370ff;color:#fff;font-weight:500}
@@ -139,6 +140,20 @@ function showWait(){
     : '<div class="empty">没有待确认/失败的任务</div>';
 }
 
+function kvHtml(label,txt){
+  var s=String(txt||'');
+  if(s.length<=100)return '<div class="kv"><b>'+label+'</b>'+esc(s)+'</div>';
+  return '<div class="kv"><b>'+label+'</b>'+esc(s.slice(0,100))
+    +'<span class="more" style="display:none">'+esc(s.slice(100))+'</span><span class="dots">…</span>'
+    +'<a class="tgl" onclick="tglKv(this)">展开全文</a></div>';
+}
+function tglKv(a){
+  var kv=a.parentNode,more=kv.querySelector('.more'),dots=kv.querySelector('.dots');
+  var open=more.style.display==='none';
+  more.style.display=open?'inline':'none';
+  dots.style.display=open?'none':'inline';
+  a.textContent=open?'收起':'展开全文';
+}
 function cardHtml(t){
   var ops='';
   if(t.status==='review'||t.status==='blocked'||t.status==='failed'||t.status==='stalled'){
@@ -152,8 +167,8 @@ function cardHtml(t){
       + '<button onclick="act('+t.id+',\'cancel\')">取消任务</button></div>';
   }
   var extra='';
-  if(t.result) extra+='<div class="kv"><b>交付说明</b>'+esc(t.result)+'</div>';
-  if(t.evidence) extra+='<div class="kv"><b>验证证据</b>'+esc(t.evidence)+'</div>';
+  if(t.result) extra+='+kvHtml('交付说明',t.result);
+  if(t.evidence) extra+='+kvHtml('验证证据',t.evidence);
   if(t.block_reason) extra+='<div class="kv"><b>待确认/失败原因</b>'+esc(t.block_reason)+'</div>';
   if(t.note) extra+='<div class="kv"><b>打回批注</b>'+esc(t.note)+'</div>';
   var prioCn=['普通','较高','紧急'];

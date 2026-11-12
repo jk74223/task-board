@@ -477,8 +477,9 @@ async def wecom_notify(request: Request):
         return JSONResponse({"ok": False, "error": "未授权"}, status_code=403)
     body = await request.json()
     text = (body.get("text") or "").strip()
-    if not text:
-        return JSONResponse({"ok": False, "error": "text 必填"}, status_code=400)
+    md = (body.get("markdown") or "").strip()
+    if not text and not md:
+        return JSONResponse({"ok": False, "error": "text 或 markdown 必填"}, status_code=400)
     w, _ = corp_cfg()
     if not (w.get("corpid") and w.get("secret")):
         return JSONResponse({"ok": False, "error": "未配置企微凭据"}, status_code=400)
@@ -491,8 +492,14 @@ async def wecom_notify(request: Request):
             return JSONResponse({"ok": False, "error": "未配置收件人 wecom_userid"}, status_code=400)
 
         def _send(token, agentid):
-            payload = {"touser": touser, "msgtype": "text",
-                       "agentid": int(agentid), "text": {"content": text}}
+            if md:
+                # 企微 markdown 消息（content 上限 2048 字节，按字节安全截断）
+                content = md.encode("utf-8")[:2000].decode("utf-8", "ignore")
+                payload = {"touser": touser, "msgtype": "markdown",
+                           "agentid": int(agentid), "markdown": {"content": content}}
+            else:
+                payload = {"touser": touser, "msgtype": "text",
+                           "agentid": int(agentid), "text": {"content": text}}
             req = urllib.request.Request(
                 "https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token=" + token,
                 data=json.dumps(payload).encode(), headers={"Content-Type": "application/json"})
