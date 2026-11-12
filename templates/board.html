@@ -32,6 +32,15 @@ body{margin:0;background:#f4f5f7;font-family:-apple-system,BlinkMacSystemFont,"P
 .kv{margin-top:8px;font-size:13px;line-height:1.6;background:#fafbfc;border-radius:8px;padding:9px 10px;white-space:pre-wrap;word-break:break-word}
 .kv b{color:#646a73;font-weight:500;display:block;font-size:12px;margin-bottom:3px}
 .kv .tgl{display:inline-block;margin-top:5px;color:#3370ff;font-size:12px;cursor:pointer}
+/* 待验收/已完成卡片默认折叠：仅标题+状态，点击展开详情 */
+.card .chead{position:relative}
+.card.collapsed{cursor:pointer}
+.card.collapsed .chead{padding-right:16px}
+.card.collapsed .chead:after{content:'▸';position:absolute;right:0;top:1px;color:#b0b6bf;font-size:14px;line-height:1.5}
+.card.collapsed.open .chead:after{content:'▾'}
+.card.collapsed .cbody{display:none}
+.card.collapsed.open{cursor:default}
+.card.collapsed.open .cbody{display:block}
 .ops{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap}
 .ops button{flex:1;min-width:88px;padding:9px 10px;border-radius:8px;border:1px solid #dbe0e6;background:#fff;font-size:14px;color:#3f4652}
 .ops .ok{border-color:#3370ff;background:#3370ff;color:#fff;font-weight:500}
@@ -96,6 +105,7 @@ var STATUS_CN = {pool:'需求池',dev:'开发中',review:'待验收',done:'已�
 var BOARD = ['pool','dev','review','done'];
 var DATA = {tasks:[],counts:{}};
 var CUR = 'pool';
+var EXP = {};
 var SYS_MAP = {
   'sp-center':'数据中心','ticket-system':'工单系统','training-platform':'学习平台',
   'service-provider':'服务商结算','agent-performance':'业绩管理','bridge-system':'排班/桥接系统',
@@ -176,12 +186,23 @@ function cardHtml(t){
     +'<span>#'+t.id+'</span><span>'+esc(t.created_at||'')+'</span>'
     +(t.status==='pool'&&t.priority>0?'<span>优先级 '+prioCn[t.priority]+'</span>':'')
     +(t.session_id?'<span>会话 '+esc(String(t.session_id).slice(0,12))+'</span>':'')+'</div>';
-  return '<div class="card"><div class="row1"><div class="ttl">'+esc(t.title)+'</div>'
+  var head='<div class="chead"><div class="row1"><div class="ttl">'+esc(t.title)+'</div>'
     +((t.immediate&&t.status==='pool')?'<span class="sys jump">插队</span>':'')
     +(t.system?'<span class="sys" title="'+esc(t.system)+'">'+esc(sysCn(t.system))+'<i class="slug">'+esc(t.system)+'</i></span>':'')+'</div>'
-    +meta
+    +meta+'</div>';
+  var body='<div class="cbody" onclick="event.stopPropagation()">'
     +(t.detail?'<div class="detail">'+esc(t.detail)+'</div>':'')
     +extra+ops+'</div>';
+  if(t.status==='review'||t.status==='done'){
+    return '<div class="card collapsed'+(EXP[t.id]?' open':'')+'" id="card'+t.id+'" onclick="tglCard('+t.id+')">'+head+body+'</div>';
+  }
+  return '<div class="card">'+head+body+'</div>';
+}
+function tglCard(id){
+  var el=document.getElementById('card'+id);
+  if(!el)return;
+  el.classList.toggle('open');
+  EXP[id]=el.classList.contains('open')?1:0;
 }
 
 function act(id,what){
