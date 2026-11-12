@@ -7,3 +7,4 @@
 - 部署：改动后 `snapshot_commit.sh` 不可用于本目录时手动 `git add <显式文件> && commit && push`；secrets.json/DB/日志不入库
 - 通知：企微新应用 1000051（可信 IP=线上服务器），旧应用 1000034 兜底；微信经本机网关 best-effort
 - 2026-11-12 推送通道自检：git_push_safe.sh 上线（直连重试→REST兜底→内容指纹验收）
+- 2026-11-12 验收逻辑修正：按递归 path→blob 映射比对（gh_push 建树含目录+全路径并存，tree SHA 不可比）
