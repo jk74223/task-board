@@ -167,8 +167,8 @@ function cardHtml(t){
       + '<button onclick="act('+t.id+',\'cancel\')">取消任务</button></div>';
   }
   var extra='';
-  if(t.result) extra+='+kvHtml('交付说明',t.result);
-  if(t.evidence) extra+='+kvHtml('验证证据',t.evidence);
+  if(t.result) extra+=kvHtml('交付说明',t.result);
+  if(t.evidence) extra+=kvHtml('验证证据',t.evidence);
   if(t.block_reason) extra+='<div class="kv"><b>待确认/失败原因</b>'+esc(t.block_reason)+'</div>';
   if(t.note) extra+='<div class="kv"><b>打回批注</b>'+esc(t.note)+'</div>';
   var prioCn=['普通','较高','紧急'];
