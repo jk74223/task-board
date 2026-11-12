@@ -345,6 +345,36 @@ async def cancel_task(request: Request, task_id: int):
     return {"ok": True}
 
 
+@app.post(PREFIX + "/api/tasks/{task_id}/priority")
+async def set_priority(request: Request, task_id: int):
+    """修改需求池中任务的优先级 / 立刻执行（插队）"""
+    if not (user_ok(request) or internal_ok(request)):
+        return JSONResponse({"ok": False, "error": "未授权"}, status_code=403)
+    body = await request.json()
+    try:
+        priority = int(body.get("priority"))
+    except Exception:
+        return JSONResponse({"ok": False, "error": "priority 必须是整数"}, status_code=400)
+    if priority < 0 or priority > 2:
+        return JSONResponse({"ok": False, "error": "priority 取值 0/1/2"}, status_code=400)
+    immediate = 1 if body.get("immediate") else 0
+    conn = db()
+    r = conn.execute("SELECT status, priority, immediate FROM tasks WHERE id=?", (task_id,)).fetchone()
+    if not r:
+        conn.close()
+        return JSONResponse({"ok": False, "error": "任务不存在"}, status_code=404)
+    if r["status"] != "pool":
+        conn.close()
+        return JSONResponse({"ok": False, "error": "仅需求池中的任务可改优先级（当前: %s）" % r["status"]}, status_code=400)
+    conn.execute("UPDATE tasks SET priority=?, immediate=? WHERE id=?", (priority, immediate, task_id))
+    note = "优先级 %s→%s" % (r["priority"], priority)
+    if immediate and not r["immediate"]:
+        note += "，设为插队"
+    log_event(conn, task_id, "pool", "pool", "user", note)
+    conn.close()
+    return {"ok": True}
+
+
 # ------------------------------ 机器侧接口 ------------------------------
 @app.post(PREFIX + "/api/tasks/claim")
 async def claim_task(request: Request):

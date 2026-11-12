@@ -147,15 +147,19 @@ function cardHtml(t){
       + '<button class="warn" onclick="reject('+t.id+')">打回修改</button>'
       + '<button onclick="act('+t.id+',\'cancel\')">取消</button></div>';
   } else if(t.status==='pool'||t.status==='dev'){
-    ops='<div class="ops"><button onclick="act('+t.id+',\'cancel\')">取消任务</button></div>';
+    ops='<div class="ops">'
+      + (t.status==='pool' ? '<button class="warn" onclick="openPrio('+t.id+')">加急/优先级</button>' : '')
+      + '<button onclick="act('+t.id+',\'cancel\')">取消任务</button></div>';
   }
   var extra='';
   if(t.result) extra+='<div class="kv"><b>交付说明</b>'+esc(t.result)+'</div>';
   if(t.evidence) extra+='<div class="kv"><b>验证证据</b>'+esc(t.evidence)+'</div>';
   if(t.block_reason) extra+='<div class="kv"><b>待确认/失败原因</b>'+esc(t.block_reason)+'</div>';
   if(t.note) extra+='<div class="kv"><b>打回批注</b>'+esc(t.note)+'</div>';
+  var prioCn=['普通','较高','紧急'];
   var meta='<div class="meta"><span class="st '+t.status+'">'+STATUS_CN[t.status]+'</span>'
     +'<span>#'+t.id+'</span><span>'+esc(t.created_at||'')+'</span>'
+    +(t.status==='pool'&&t.priority>0?'<span>优先级 '+prioCn[t.priority]+'</span>':'')
     +(t.session_id?'<span>会话 '+esc(String(t.session_id).slice(0,12))+'</span>':'')+'</div>';
   return '<div class="card"><div class="row1"><div class="ttl">'+esc(t.title)+'</div>'
     +((t.immediate&&t.status==='pool')?'<span class="sys jump">插队</span>':'')
@@ -180,6 +184,37 @@ function reject(id){
   api('/tasks/'+id+'/reject',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({note:note})})
     .then(function(res){ if(!res.ok){toast(res.error||'操作失败');return} toast('已打回需求池');load() })
     .catch(function(){toast('网络错误')});
+}
+
+function openPrio(id){
+  var t=null;
+  DATA.tasks.forEach(function(x){if(x.id===id)t=x});
+  if(!t)return;
+  var prioCn=['普通','较高','紧急'];
+  document.getElementById('sheet').innerHTML=
+    '<h2>加急 / 调整优先级 <span onclick="closeSheet()">关闭</span></h2>'
+    +'<div style="font-size:13.5px;color:#3f4652;font-weight:600;margin-bottom:6px">#'+t.id+' '+esc(t.title)+'</div>'
+    +'<label>优先级</label><select id="p_priority">'
+    +[0,1,2].map(function(v){return '<option value="'+v+'"'+((t.priority||0)===v?' selected':'')+'>'+prioCn[v]+'</option>'}).join('')
+    +'</select>'
+    +'<label style="display:flex;align-items:center;gap:9px;margin-top:14px;padding:11px 12px;border:1px solid #dbe0e6;border-radius:9px;background:#fafbfc">'
+    +'<input type="checkbox" id="p_immediate" style="width:20px;height:20px;flex:0 0 auto;margin:0"'+(t.immediate?' checked':'')+'>'
+    +'<span style="font-size:14px;color:#1f2329">立刻执行（插队，优先于排队中的需求）</span></label>'
+    +'<div class="hint">调度器每 1 分钟跑一次，勾选并保存后通常 1 分钟内开工。</div>'
+    +'<button class="sub" id="prioBtn" onclick="submitPrio('+t.id+')">保存</button>';
+  document.getElementById('mask').classList.add('on');
+}
+function submitPrio(id){
+  var priority=parseInt(document.getElementById('p_priority').value||'0',10);
+  var immediate=document.getElementById('p_immediate').checked?1:0;
+  var btn=document.getElementById('prioBtn'); btn.disabled=true; btn.textContent='保存中…';
+  api('/tasks/'+id+'/priority',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({priority:priority,immediate:immediate})})
+    .then(function(res){
+      btn.disabled=false; btn.textContent='保存';
+      if(!res.ok){toast(res.error||'保存失败');return}
+      closeSheet(); toast(immediate?'已设为插队，约 1 分钟内开工':'优先级已更新'); load();
+    }).catch(function(){btn.disabled=false;btn.textContent='保存';toast('网络错误')});
 }
 
 function openNew(){
