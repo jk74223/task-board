@@ -319,7 +319,7 @@ async def reject_task(request: Request, task_id: int):
     if not r:
         conn.close()
         return JSONResponse({"ok": False, "error": "任务不存在"}, status_code=404)
-    conn.execute("UPDATE tasks SET status='pool', result=NULL, evidence=NULL, block_reason=NULL, "
+    conn.execute("UPDATE tasks SET status='pool', block_reason=NULL, "
                  "started_at=NULL, finished_at=NULL, worker_pid=NULL, session_id=NULL, log_path=NULL, "
                  "notified='', note=? WHERE id=?", (note, task_id))
     log_event(conn, task_id, r["status"], "pool", "user", note)
