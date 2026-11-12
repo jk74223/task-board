@@ -6,3 +6,4 @@
 - 架构：后端在线上服务器（本目录，systemd task-board，端口 16676）；调度器在 Hermes 宿主 `~/.hermes/scripts/taskboard_dispatch.py`
 - 部署：改动后 `snapshot_commit.sh` 不可用于本目录时手动 `git add <显式文件> && commit && push`；secrets.json/DB/日志不入库
 - 通知：企微新应用 1000051（可信 IP=线上服务器），旧应用 1000034 兜底；微信经本机网关 best-effort
+- 2026-11-12 推送通道自检：git_push_safe.sh 上线（直连重试→REST兜底→内容指纹验收）
