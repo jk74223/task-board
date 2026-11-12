@@ -193,10 +193,8 @@ function cardHtml(t){
   var body='<div class="cbody" onclick="event.stopPropagation()">'
     +(t.detail?'<div class="detail">'+esc(t.detail)+'</div>':'')
     +extra+ops+'</div>';
-  if(t.status==='review'||t.status==='done'){
-    return '<div class="card collapsed'+(EXP[t.id]?' open':'')+'" id="card'+t.id+'" onclick="tglCard('+t.id+')">'+head+body+'</div>';
-  }
-  return '<div class="card">'+head+body+'</div>';
+  // 卡片#4打回批注：所有状态的卡片都默认收起（与已完成一致），点击标题展开详情
+  return '<div class="card collapsed'+(EXP[t.id]?' open':'')+'" id="card'+t.id+'" onclick="tglCard('+t.id+')">'+head+body+'</div>';
 }
 function tglCard(id){
   var el=document.getElementById('card'+id);
