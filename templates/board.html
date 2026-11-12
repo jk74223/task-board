@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>任务看板</title>
+<!-- board-build: 20261112-collapse-all-modal-lock -->
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:#f4f5f7;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;color:#1f2329;font-size:15px}
@@ -32,7 +33,7 @@ body{margin:0;background:#f4f5f7;font-family:-apple-system,BlinkMacSystemFont,"P
 .kv{margin-top:8px;font-size:13px;line-height:1.6;background:#fafbfc;border-radius:8px;padding:9px 10px;white-space:pre-wrap;word-break:break-word}
 .kv b{color:#646a73;font-weight:500;display:block;font-size:12px;margin-bottom:3px}
 .kv .tgl{display:inline-block;margin-top:5px;color:#3370ff;font-size:12px;cursor:pointer}
-/* 待验收/已完成卡片默认折叠：仅标题+状态，点击展开详情 */
+/* 所有状态的卡片默认折叠：仅标题+状态，点击展开详情（电脑端/手机端一致） */
 .card .chead{position:relative}
 .card.collapsed{cursor:pointer}
 .card.collapsed .chead{padding-right:16px}
@@ -95,7 +96,7 @@ textarea{resize:vertical;min-height:96px}
 <div class="list" id="list"><div class="empty">加载中…</div></div>
 <button class="fab" onclick="openNew()">+</button>
 
-<div class="mask" id="mask" onclick="if(event.target===this)closeSheet()">
+<div class="mask" id="mask" onclick="if(event.target===this&&!SHEET_LOCK)closeSheet()">
   <div class="sheet" id="sheet"></div>
 </div>
 <div class="toast" id="toast"></div>
@@ -106,6 +107,7 @@ var BOARD = ['pool','dev','review','done'];
 var DATA = {tasks:[],counts:{}};
 var CUR = 'pool';
 var EXP = {};
+var SHEET_LOCK = false;  // true=遮罩点击不关闭（新增需求弹窗专用）
 var SYS_MAP = {
   'sp-center':'数据中心','ticket-system':'工单系统','training-platform':'学习平台',
   'service-provider':'服务商结算','agent-performance':'业绩管理','bridge-system':'排班/桥接系统',
@@ -236,6 +238,7 @@ function openPrio(id){
     +'<span style="font-size:14px;color:#1f2329">立刻执行（插队，优先于排队中的需求）</span></label>'
     +'<div class="hint">调度器每 1 分钟跑一次，勾选并保存后通常 1 分钟内开工。</div>'
     +'<button class="sub" id="prioBtn" onclick="submitPrio('+t.id+')">保存</button>';
+  SHEET_LOCK = false;
   document.getElementById('mask').classList.add('on');
 }
 function submitPrio(id){
@@ -264,9 +267,10 @@ function openNew(){
     +'<span style="font-size:14px;color:#1f2329">立刻执行（插队，优先于排队中的需求）</span></label>'
     +'<div class="hint">不勾选就排队；调度器每 1 分钟跑一次，插队卡通常 1 分钟内开工。</div>'
     +'<button class="sub" id="subBtn" onclick="submitNew()">加入需求池</button>';
+  SHEET_LOCK = true;  // 新增需求弹窗：点空白处不关闭，只能用「关闭」按钮
   document.getElementById('mask').classList.add('on');
 }
-function closeSheet(){document.getElementById('mask').classList.remove('on')}
+function closeSheet(){SHEET_LOCK=false;document.getElementById('mask').classList.remove('on')}
 
 function submitNew(){
   var title=document.getElementById('f_title').value.trim();
