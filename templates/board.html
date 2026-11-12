@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>任务看板</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:#f4f5f7;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;color:#1f2329;font-size:15px}
+.top{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid #e6e8eb;padding:12px 14px 0}
+.top h1{margin:0 0 10px;font-size:17px;font-weight:600;display:flex;align-items:center;justify-content:space-between}
+.top h1 button{font-size:14px;padding:7px 14px;border:0;border-radius:8px;background:#3370ff;color:#fff;font-weight:500}
+.tabs{display:flex;gap:4px;overflow-x:auto;padding-bottom:8px}
+.tab{flex:0 0 auto;padding:8px 13px;border-radius:8px;background:#f0f1f3;color:#646a73;font-size:14px;white-space:nowrap;border:0}
+.tab.on{background:#e8f0ff;color:#3370ff;font-weight:600}
+.tab .n{display:inline-block;min-width:18px;padding:0 5px;margin-left:5px;border-radius:9px;background:#d9dee6;color:#505763;font-size:12px;line-height:18px;text-align:center}
+.tab.on .n{background:#3370ff;color:#fff}
+.list{padding:12px 14px 80px}
+.card{background:#fff;border-radius:12px;padding:13px 14px;margin-bottom:10px;border:1px solid #e9ebef;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+.card:active{background:#fafbfc}
+.row1{display:flex;align-items:flex-start;gap:8px}
+.ttl{flex:1;font-weight:600;line-height:1.4;word-break:break-word}
+.sys{flex:0 0 auto;font-size:12px;padding:2px 7px;border-radius:6px;background:#eef1f6;color:#4b5563;white-space:nowrap}
+.sys.jump{background:#fff1f0;color:#cf1322;font-weight:500}
+.meta{margin-top:7px;font-size:12px;color:#8a919c;display:flex;flex-wrap:wrap;gap:10px}
+.st{display:inline-block;font-size:12px;padding:2px 8px;border-radius:6px;font-weight:500}
+.st.pool{background:#fff4e6;color:#d46b08}.st.dev{background:#e8f0ff;color:#3370ff}
+.st.review{background:#e6fffb;color:#0d9488}.st.done{background:#edf7ed;color:#2e7d32}
+.st.blocked{background:#fff1f0;color:#cf1322}.st.failed{background:#fff1f0;color:#cf1322}
+.st.cancelled{background:#f2f3f5;color:#8a919c}.st.stalled{background:#fff7e6;color:#d46b08}
+.detail{margin-top:10px;padding-top:10px;border-top:1px dashed #e6e8eb;font-size:13.5px;line-height:1.65;color:#3f4652;white-space:pre-wrap;word-break:break-word}
+.kv{margin-top:8px;font-size:13px;line-height:1.6;background:#fafbfc;border-radius:8px;padding:9px 10px;white-space:pre-wrap;word-break:break-word}
+.kv b{color:#646a73;font-weight:500;display:block;font-size:12px;margin-bottom:3px}
+.ops{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap}
+.ops button{flex:1;min-width:88px;padding:9px 10px;border-radius:8px;border:1px solid #dbe0e6;background:#fff;font-size:14px;color:#3f4652}
+.ops .ok{border-color:#3370ff;background:#3370ff;color:#fff;font-weight:500}
+.ops .warn{border-color:#f0b429;color:#a16207}
+.empty{text-align:center;color:#a0a6ad;padding:56px 20px;font-size:14px;line-height:1.8}
+.mask{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;z-index:50}
+.mask.on{display:flex}
+.sheet{width:100%;background:#fff;border-radius:16px 16px 0 0;padding:18px 16px 24px;max-height:88vh;overflow-y:auto}
+.sheet h2{margin:0 0 14px;font-size:16px;display:flex;justify-content:space-between;align-items:center}
+.sheet h2 span{font-size:13px;color:#8a919c;font-weight:400}
+label{display:block;font-size:13px;color:#646a73;margin:12px 0 5px}
+input,textarea,select{width:100%;padding:11px 12px;border:1px solid #dbe0e6;border-radius:9px;font-size:15px;font-family:inherit;background:#fff;color:#1f2329}
+textarea{resize:vertical;min-height:96px}
+.hint{font-size:12px;color:#a0a6ad;margin-top:4px}
+.sub{width:100%;margin-top:18px;padding:13px;border:0;border-radius:10px;background:#3370ff;color:#fff;font-size:16px;font-weight:600}
+.sub:disabled{opacity:.6}
+.toast{position:fixed;left:50%;bottom:88px;transform:translateX(-50%);background:rgba(0,0,0,.82);color:#fff;padding:10px 18px;border-radius:10px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:99;max-width:80vw;text-align:center}
+.toast.on{opacity:1}
+.fab{position:fixed;right:16px;bottom:22px;width:56px;height:56px;border-radius:50%;border:0;background:#3370ff;color:#fff;font-size:28px;line-height:1;box-shadow:0 4px 14px rgba(51,112,255,.4);z-index:20}
+.sys i.slug{font-style:normal;opacity:.72;margin-left:5px;font-size:11px}
+/* 手机端适配（≤480px）：收紧间距、放大触控区 */
+@media (max-width:480px){
+  body{font-size:14px}
+  .top{padding:10px 12px 0}
+  .top h1{font-size:16px;margin-bottom:8px}
+  .top h1 button{font-size:13.5px;padding:8px 13px}
+  .tab{padding:8px 11px;font-size:13.5px}
+  .list{padding:10px 12px calc(76px + env(safe-area-inset-bottom))}
+  .card{padding:12px;border-radius:10px}
+  .detail{font-size:13px}
+  .ops button{min-width:0;flex:1 1 30%;padding:11px 6px;font-size:13.5px}
+  .fab{right:14px;bottom:calc(18px + env(safe-area-inset-bottom));width:52px;height:52px;font-size:26px}
+  .toast{bottom:calc(76px + env(safe-area-inset-bottom));max-width:86vw}
+  .sys i.slug{display:none}
+}
+/* 电脑端适配（≥768px）：内容定宽居中，新建弹窗改为居中对话框，系统名带 slug 全称 */
+@media (min-width:768px){
+  .top{padding:16px max(24px,calc(50vw - 372px)) 0}
+  .top h1{font-size:19px;margin-bottom:12px}
+  .list{padding:18px max(24px,calc(50vw - 372px)) 90px}
+  .card{padding:16px 18px}
+  .mask{align-items:center;justify-content:center}
+  .sheet{width:520px;border-radius:14px;max-height:82vh}
+}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>任务看板 <button onclick="openNew()">+ 新需求</button></h1>
+  <div class="tabs" id="tabs"></div>
+</div>
+<div class="list" id="list"><div class="empty">加载中…</div></div>
+<button class="fab" onclick="openNew()">+</button>
+
+<div class="mask" id="mask" onclick="if(event.target===this)closeSheet()">
+  <div class="sheet" id="sheet"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+var STATUS_CN = {pool:'需求池',dev:'开发中',review:'待验收',done:'已完成',blocked:'待确认',failed:'失败',cancelled:'已取消',stalled:'超时中断'};
+var BOARD = ['pool','dev','review','done'];
+var DATA = {tasks:[],counts:{}};
+var CUR = 'pool';
+var SYS_MAP = {
+  'sp-center':'数据中心','ticket-system':'工单系统','training-platform':'学习平台',
+  'service-provider':'服务商结算','agent-performance':'业绩管理','bridge-system':'排班/桥接系统',
+  'impl-eff':'实施提效','policy-kb':'渠道政策后台','sales-script-generator':'销售话术',
+  'telesales':'电销系统','renewal-management':'续约管理','task-board':'任务看板',
+  '其它（填在描述里）':'其它（填在描述里）'
+};
+var SYS_OPTIONS = ['','sp-center','ticket-system','training-platform','service-provider','agent-performance',
+  'bridge-system','impl-eff','policy-kb','sales-script-generator','telesales','renewal-management','task-board','其它（填在描述里）'];
+function sysCn(s){return SYS_MAP[s]||s}
+function sysLabel(s){if(!s)return '';if(s.indexOf('其它')===0)return s;return SYS_MAP[s] ? SYS_MAP[s]+'（'+s+'）' : s}
+
+function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._h);t._h=setTimeout(function(){t.classList.remove('on')},2000)}
+function esc(s){if(s==null)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function api(path,opts){opts=opts||{};opts.headers=opts.headers||{};opts.credentials='same-origin';
+  return fetch('/task-board/api'+path,opts).then(function(r){return r.json()})}
+
+function load(){
+  api('/tasks').then(function(res){
+    if(!res.ok){document.getElementById('list').innerHTML='<div class="empty">未授权或加载失败</div>';return}
+    DATA=res;render();
+  }).catch(function(){document.getElementById('list').innerHTML='<div class="empty">网络错误，下拉重试</div>'});
+}
+
+function render(){
+  var tabs=document.getElementById('tabs');
+  tabs.innerHTML=BOARD.map(function(s){
+    return '<button class="tab'+(s===CUR?' on':'')+'" onclick="CUR=\''+s+'\';render()">'+STATUS_CN[s]+
+      '<span class="n">'+(DATA.counts[s]||0)+'</span></button>';
+  }).join('')+'<button class="tab" onclick="showWait()">待确认/失败'+
+      '<span class="n">'+((DATA.counts.blocked||0)+(DATA.counts.failed||0)+(DATA.counts.stalled||0))+'</span></button>';
+
+  var items=DATA.tasks.filter(function(t){return t.status===CUR});
+  if(!items.length){document.getElementById('list').innerHTML='<div class="empty">这里还没有任务<br>点右下角 + 提一个需求</div>';return}
+  document.getElementById('list').innerHTML=items.map(cardHtml).join('');
+}
+
+function showWait(){
+  var items=DATA.tasks.filter(function(t){return ['blocked','failed','stalled','cancelled'].indexOf(t.status)>=0});
+  document.getElementById('tabs').innerHTML='<button class="tab" onclick="CUR=\'pool\';render()">← 返回看板</button>';
+  document.getElementById('list').innerHTML = items.length ? items.map(cardHtml).join('')
+    : '<div class="empty">没有待确认/失败的任务</div>';
+}
+
+function cardHtml(t){
+  var ops='';
+  if(t.status==='review'||t.status==='blocked'||t.status==='failed'||t.status==='stalled'){
+    ops='<div class="ops">'
+      + '<button class="ok" onclick="act('+t.id+',\'accept\')">验收通过</button>'
+      + '<button class="warn" onclick="reject('+t.id+')">打回修改</button>'
+      + '<button onclick="act('+t.id+',\'cancel\')">取消</button></div>';
+  } else if(t.status==='pool'||t.status==='dev'){
+    ops='<div class="ops"><button onclick="act('+t.id+',\'cancel\')">取消任务</button></div>';
+  }
+  var extra='';
+  if(t.result) extra+='<div class="kv"><b>交付说明</b>'+esc(t.result)+'</div>';
+  if(t.evidence) extra+='<div class="kv"><b>验证证据</b>'+esc(t.evidence)+'</div>';
+  if(t.block_reason) extra+='<div class="kv"><b>待确认/失败原因</b>'+esc(t.block_reason)+'</div>';
+  if(t.note) extra+='<div class="kv"><b>打回批注</b>'+esc(t.note)+'</div>';
+  var meta='<div class="meta"><span class="st '+t.status+'">'+STATUS_CN[t.status]+'</span>'
+    +'<span>#'+t.id+'</span><span>'+esc(t.created_at||'')+'</span>'
+    +(t.session_id?'<span>会话 '+esc(String(t.session_id).slice(0,12))+'</span>':'')+'</div>';
+  return '<div class="card"><div class="row1"><div class="ttl">'+esc(t.title)+'</div>'
+    +((t.immediate&&t.status==='pool')?'<span class="sys jump">插队</span>':'')
+    +(t.system?'<span class="sys" title="'+esc(t.system)+'">'+esc(sysCn(t.system))+'<i class="slug">'+esc(t.system)+'</i></span>':'')+'</div>'
+    +meta
+    +(t.detail?'<div class="detail">'+esc(t.detail)+'</div>':'')
+    +extra+ops+'</div>';
+}
+
+function act(id,what){
+  var body={};
+  if(what==='reject'){return}
+  if(!confirm(what==='accept'?'确认验收通过？':'确认取消这个任务？'))return;
+  api('/tasks/'+id+'/'+what,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(function(res){ if(!res.ok){toast(res.error||'操作失败');return} toast('已完成');load() })
+    .catch(function(){toast('网络错误')});
+}
+
+function reject(id){
+  var note=prompt('打回原因（会带回需求池，可留空）：','');
+  if(note===null)return;
+  api('/tasks/'+id+'/reject',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({note:note})})
+    .then(function(res){ if(!res.ok){toast(res.error||'操作失败');return} toast('已打回需求池');load() })
+    .catch(function(){toast('网络错误')});
+}
+
+function openNew(){
+  document.getElementById('sheet').innerHTML=
+    '<h2>提一个新需求 <span onclick="closeSheet()">关闭</span></h2>'
+    +'<label>标题（一句话说清要什么）</label><input id="f_title" maxlength="120" placeholder="例：加急列表加「额度已返还」标记">'
+    +'<label>详细描述（现象/期望，越具体越好）</label><textarea id="f_detail" placeholder="某系统+某页面+某角色+现象；期望结果；验收标准"></textarea>'
+    +'<label>目标系统</label><select id="f_system">'+SYS_OPTIONS.map(function(s){return '<option value="'+esc(s)+'">'+esc(s?sysLabel(s):'（由执行者判断）')+'</option>'}).join('')+'</select>'
+    +'<div class="hint">同一系统的任务会串行执行，避免互相覆盖；不确定就留空。</div>'
+    +'<label>优先级</label><select id="f_priority"><option value="0">普通</option><option value="1">较高</option><option value="2">紧急</option></select>'
+    +'<label style="display:flex;align-items:center;gap:9px;margin-top:14px;padding:11px 12px;border:1px solid #dbe0e6;border-radius:9px;background:#fafbfc">'
+    +'<input type="checkbox" id="f_immediate" style="width:20px;height:20px;flex:0 0 auto;margin:0">'
+    +'<span style="font-size:14px;color:#1f2329">立刻执行（插队，优先于排队中的需求）</span></label>'
+    +'<div class="hint">不勾选就排队；调度器每 1 分钟跑一次，插队卡通常 1 分钟内开工。</div>'
+    +'<button class="sub" id="subBtn" onclick="submitNew()">加入需求池</button>';
+  document.getElementById('mask').classList.add('on');
+}
+function closeSheet(){document.getElementById('mask').classList.remove('on')}
+
+function submitNew(){
+  var title=document.getElementById('f_title').value.trim();
+  var detail=document.getElementById('f_detail').value.trim();
+  var system=document.getElementById('f_system').value;
+  var priority=parseInt(document.getElementById('f_priority').value||'0',10);
+  var immediate=document.getElementById('f_immediate').checked?1:0;
+  if(!title){toast('标题必填');return}
+  var btn=document.getElementById('subBtn'); btn.disabled=true; btn.textContent='提交中…';
+  api('/tasks',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({title:title,detail:detail,system:system,priority:priority,immediate:immediate})})
+    .then(function(res){
+      btn.disabled=false; btn.textContent='加入需求池';
+      if(!res.ok){toast(res.error||'提交失败');return}
+      closeSheet(); toast(immediate?'已加入需求池（插队），约 1 分钟内开工':'已加入需求池，等待排队执行'); CUR='pool'; load();
+    }).catch(function(){btn.disabled=false;btn.textContent='加入需求池';toast('网络错误')});
+}
+
+document.addEventListener('visibilitychange',function(){if(!document.hidden)load()});
+load();
+setInterval(load,20000);
+</script>
+</body>
+</html>
