@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>任务看板</title>
-<!-- board-build: 20261112-collapse-all-modal-lock -->
+<!-- board-build: 20261113-reject-modal-close-btn -->
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:#f4f5f7;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;color:#1f2329;font-size:15px}
@@ -52,6 +52,7 @@ body{margin:0;background:#f4f5f7;font-family:-apple-system,BlinkMacSystemFont,"P
 .sheet{width:100%;background:#fff;border-radius:16px 16px 0 0;padding:18px 16px 24px;max-height:88vh;overflow-y:auto}
 .sheet h2{margin:0 0 14px;font-size:16px;display:flex;justify-content:space-between;align-items:center}
 .sheet h2 span{font-size:13px;color:#8a919c;font-weight:400}
+.sheet h2 .clsbtn{flex:0 0 auto;-webkit-appearance:none;appearance:none;border:1px solid #e3e6ea;background:#f4f5f7;color:#3f4652;font-size:13.5px;font-weight:500;padding:10px 16px;border-radius:9px;line-height:1;min-height:38px;min-width:62px;cursor:pointer;font-family:inherit}
 label{display:block;font-size:13px;color:#646a73;margin:12px 0 5px}
 input,textarea,select{width:100%;padding:11px 12px;border:1px solid #dbe0e6;border-radius:9px;font-size:15px;font-family:inherit;background:#fff;color:#1f2329}
 textarea{resize:vertical;min-height:96px}
@@ -75,6 +76,7 @@ textarea{resize:vertical;min-height:96px}
   .ops button{min-width:0;flex:1 1 30%;padding:11px 6px;font-size:13.5px}
   .fab{right:14px;bottom:calc(18px + env(safe-area-inset-bottom));width:52px;height:52px;font-size:26px}
   .toast{bottom:calc(76px + env(safe-area-inset-bottom));max-width:86vw}
+  .sheet h2 .clsbtn{min-height:44px;min-width:72px;padding:0 18px;font-size:14px}
   .sys i.slug{display:none}
 }
 /* 电脑端适配（≥768px）：内容定宽居中，新建弹窗改为居中对话框，系统名带 slug 全称 */
@@ -207,19 +209,41 @@ function tglCard(id){
 
 function act(id,what){
   var body={};
-  if(what==='reject'){return}
   if(!confirm(what==='accept'?'确认验收通过？':'确认取消这个任务？'))return;
   api('/tasks/'+id+'/'+what,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
     .then(function(res){ if(!res.ok){toast(res.error||'操作失败');return} toast('已完成');load() })
     .catch(function(){toast('网络错误')});
 }
 
+// 打回修改：不再用 window.prompt（企微内置浏览器/电脑端 WebView 里 prompt 被禁用会返回 null，
+// 页面表现为「点了没反应」），改用页内弹窗填写批注，全端一致
 function reject(id){
-  var note=prompt('打回原因（会带回需求池，可留空）：','');
-  if(note===null)return;
+  var t=null;
+  DATA.tasks.forEach(function(x){if(x.id===id)t=x});
+  document.getElementById('sheet').innerHTML=
+    '<h2>打回修改 <button type="button" class="clsbtn" onclick="closeSheet()">关闭</button></h2>'
+    +'<div style="font-size:13.5px;color:#3f4652;font-weight:600;margin-bottom:2px">#'+id+' '+esc(t?t.title:'')+'</div>'
+    +'<label>打回原因（会带回需求池，可留空）</label>'
+    +'<textarea id="r_note" maxlength="600" placeholder="写清哪里不对、期望改成什么样，执行者会据此重做"></textarea>'
+    +'<div class="hint">打回后卡片回到「需求池」，按原优先级重新排队。</div>'
+    +'<button class="sub" id="rejBtn" onclick="submitReject('+id+')">确认打回</button>';
+  SHEET_LOCK=false;
+  document.getElementById('mask').classList.add('on');
+}
+function submitReject(id){
+  var noteEl=document.getElementById('r_note');
+  var note=noteEl?noteEl.value.trim():'';
+  var btn=document.getElementById('rejBtn');
+  if(!btn)return;
+  if(btn.disabled)return;
+  btn.disabled=true; btn.textContent='提交中…';
   api('/tasks/'+id+'/reject',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({note:note})})
-    .then(function(res){ if(!res.ok){toast(res.error||'操作失败');return} toast('已打回需求池');load() })
-    .catch(function(){toast('网络错误')});
+    .then(function(res){
+      btn.disabled=false; btn.textContent='确认打回';
+      if(!res.ok){toast(res.error||'操作失败');return}
+      closeSheet(); toast('已打回需求池'); CUR='pool'; load();
+    })
+    .catch(function(){btn.disabled=false;btn.textContent='确认打回';toast('网络错误')});
 }
 
 function openPrio(id){
@@ -228,7 +252,7 @@ function openPrio(id){
   if(!t)return;
   var prioCn=['普通','较高','紧急'];
   document.getElementById('sheet').innerHTML=
-    '<h2>加急 / 调整优先级 <span onclick="closeSheet()">关闭</span></h2>'
+    '<h2>加急 / 调整优先级 <button type="button" class="clsbtn" onclick="closeSheet()">关闭</button></h2>'
     +'<div style="font-size:13.5px;color:#3f4652;font-weight:600;margin-bottom:6px">#'+t.id+' '+esc(t.title)+'</div>'
     +'<label>优先级</label><select id="p_priority">'
     +[0,1,2].map(function(v){return '<option value="'+v+'"'+((t.priority||0)===v?' selected':'')+'>'+prioCn[v]+'</option>'}).join('')
@@ -256,7 +280,7 @@ function submitPrio(id){
 
 function openNew(){
   document.getElementById('sheet').innerHTML=
-    '<h2>提一个新需求 <span onclick="closeSheet()">关闭</span></h2>'
+    '<h2>提一个新需求 <button type="button" class="clsbtn" onclick="closeSheet()">关闭</button></h2>'
     +'<label>标题（一句话说清要什么）</label><input id="f_title" maxlength="120" placeholder="例：加急列表加「额度已返还」标记">'
     +'<label>详细描述（现象/期望，越具体越好）</label><textarea id="f_detail" placeholder="某系统+某页面+某角色+现象；期望结果；验收标准"></textarea>'
     +'<label>目标系统</label><select id="f_system">'+SYS_OPTIONS.map(function(s){return '<option value="'+esc(s)+'">'+esc(s?sysLabel(s):'（由执行者判断）')+'</option>'}).join('')+'</select>'
